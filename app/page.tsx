@@ -590,7 +590,7 @@ const App: React.FC = () => {
                   </button>
                   <button 
                     onClick={() => {
-                      redirect('/');
+                      redirect('/sign-in');
                     }}
                     onMouseEnter={onHoverStart} onMouseLeave={onHoverEnd}
                     className="glass px-8 py-4 rounded-full font-bold text-white hover:bg-white/10 transition-all w-full sm:w-auto"
