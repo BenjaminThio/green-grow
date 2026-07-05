@@ -1,27 +1,23 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  reactStrictMode: true,
   images: {
     remotePatterns: [
       {
-        protocol: "https",
-        hostname: "**",
+        protocol: 'https',
+        hostname: 'i.pravatar.cc'
       },
-    ],
-  },
-  async headers() {
-    return [
       {
-        source: "/:path*",
-        headers: [
-          // { key: "Cross-Origin-Embedder-Policy", value: "require-corp" },
-          // { key: 'Cross-Origin-Embedder-Policy', value: 'credentialless' },
-          // { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
-          { key: "Cross-Origin-Resource-Policy", value: "cross-origin" },
-        ],
+        protocol: 'https',
+        hostname: 'cdn.wallpapersafari.com'
       },
-    ];
-  },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com'
+      }
+    ]
+  }
 };
 
 export default nextConfig;

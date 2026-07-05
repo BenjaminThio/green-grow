@@ -1,0 +1,73 @@
+/*
+ * Landing-page-only styles, imported solely by landing-client.tsx.
+ * Shared utilities like .glass and .text-gradient live in globals.css.
+ */
+
+/* ------------------------------------------------------------
+   Layer stack, all POSITIVE z-index children of .landing-root so
+   nothing has to fight the app-wide opaque <body> background:
+
+     .bg-image        z-index: 0    forest photo backdrop
+     .ambient-bg      z-index: 1    gradient blobs
+     .landing-tree    z-index: 1    3D tree (right half, full height)
+     .landing-particles z-index: 2  drifting firefly canvas
+     nav / main       z-index: 10+  hero content
+
+   .landing-root itself is a positioned stacking context; its own
+   background stays transparent so .bg-image (a fixed child at z-0)
+   is what you actually see behind everything.
+   ------------------------------------------------------------ */
+
+.landing-root {
+    position: relative;
+    isolation: isolate; /* new stacking context so z-indexes are self-contained */
+    background: transparent;
+}
+
+.bg-image {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background-color: #04140c;
+    background-image:
+        linear-gradient(to bottom, rgba(4, 20, 12, 0.55), rgba(2, 10, 6, 0.72)),
+        url('/public/forest.jpg');
+    background-size: cover, cover;
+    background-position: center, center;
+    background-repeat: no-repeat, no-repeat;
+    filter: brightness(0.6) saturate(1.15);
+    pointer-events: none;
+}
+
+/* Shared .ambient-bg defaults to z-index:-10; lift it above the photo. */
+.landing-root .ambient-bg {
+    z-index: 1;
+}
+
+/* Firefly particle canvas (its inner container is z-0 by default). */
+.landing-particles > div {
+    z-index: 2 !important;
+}
+
+/* ------------------------------------------------------------
+   3D tree: fixed layer on the RIGHT half of the viewport, full
+   height. Being fixed + full-height (not a small boxed canvas) is
+   what stops it from being clipped or disappearing on resize.
+   ------------------------------------------------------------ */
+.landing-tree {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 55vw;
+    height: 100vh;
+    z-index: 1;
+    pointer-events: none;
+}
+
+@media (max-width: 1023px) {
+    /* On narrow screens the tree becomes a faint full-width backdrop. */
+    .landing-tree {
+        width: 100vw;
+        opacity: 0.5;
+    }
+}
