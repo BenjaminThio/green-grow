@@ -84,11 +84,11 @@
        taller and nudged up so the plume sits higher in the hero. */
     .landing-tree-box {
         position: absolute;
-        top: -120px;
+        top: -130px;
         left: 0;
         right: 0;
         width: 100%;
-        height: calc(100% + 120px);
+        height: calc(100% + 130px);
         opacity: 1;
     }
 }
