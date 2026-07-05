@@ -1,13 +1,6 @@
 'use client';
 
-/* TensorFlow.js + MobileNet are loaded from CDN at runtime. */
-declare global {
-    interface Window {
-        tf?: unknown;
-        mobilenet?: { load: () => Promise<{ classify: (img: HTMLImageElement) => Promise<{ className: string; probability: number }[]> }> };
-    }
-}
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
     Camera, 
     Recycle, 
@@ -20,7 +13,7 @@ import {
     Loader2,
     Sprout,
 } from 'lucide-react';
-import Image from 'next/image';
+import { classifyWaste } from '@/lib/ai';
 
 interface WasteData {
   material: string;
@@ -31,11 +24,6 @@ interface WasteData {
   benefit: string;
   burn: string;
   landfill: string;
-}
-
-interface Prediction {
-  className: string;
-  probability: number;
 }
 
 const wasteDatabase: Record<string, WasteData> = {
@@ -261,111 +249,13 @@ const wasteDatabase: Record<string, WasteData> = {
   }
 };
 
-function getWasteKey(label: string): string | null {
-  if (['phone', 'computer', 'keyboard', 'laptop', 'notebook', 'tablet', 'ipad', 'mouse', 'screen', 'monitor', 'printer', 'remote', 'controller', 'radio', 'player', 'speaker', 'watch', 'clock', 'device', 'television', 'tv'].some(keyword => label.includes(keyword))) {
-    return 'electronic';
-  }
-  if (['wire', 'cable', 'cord', 'coil', 'hard disc', 'hard drive', 'motherboard', 'circuit', 'chip', 'memory', 'modem', 'processor', 'cpu', 'battery'].some(keyword => label.includes(keyword)) || (label.includes('card') && label.includes('graphic'))) {
-    return 'device_component';
-  }
-  if (['apple', 'banana', 'orange', 'lemon', 'fruit', 'vegetable', 'bread', 'mushroom', 'strawberry', 'food', 'corn', 'broccoli', 'pizza', 'burger', 'meat', 'chicken', 'salad', 'cake', 'ice cream', 'sandwich', 'soup', 'chocolate', 'cookie', 'dough', 'sushi', 'rice', 'noodle', 'pasta', 'cheese', 'egg', 'fish', 'steak', 'pie', 'tart', 'bun', 'toast', 'taco', 'burrito', 'hot dog', 'sausage', 'snack', 'meal', 'dinner', 'breakfast', 'bagel', 'pretzel', 'mashed', 'potato', 'carbonara', 'spaghetti', 'sauce', 'dip', 'guacamole', 'trifle', 'zucchini', 'squash', 'cucumber', 'pepper', 'onion', 'garlic'].some(keyword => label.includes(keyword))) {
-    return 'food';
-  }
-  if (['bento', 'tiffin', 'tray', 'take-out', 'takeout', 'doggy bag', 'clamshell', 'lunch box'].some(keyword => label.includes(keyword)) || (label.includes('carton') && label.includes('food')) || (label.includes('box') && label.includes('food'))) {
-    return 'food_container';
-  }
-  if (['water bottle', 'soda bottle', 'plastic bottle', 'pop bottle'].some(keyword => label.includes(keyword))) {
-    return 'bottle';
-  }
-  if (['beer', 'soda', 'pop', 'beverage'].some(keyword => label.includes(keyword))) {
-    return 'can';
-  }
-  if (['can', 'tin', 'opener', 'soup'].some(keyword => label.includes(keyword))) {
-    return 'tin_can';
-  }
-  if (['mug', 'pottery', 'ceramic', 'clay', 'earthenware', 'porcelain', 'plate', 'saucer'].some(keyword => label.includes(keyword))) {
-    return 'ceramic';
-  }
-  if (['spoon', 'fork', 'knife', 'spatula', 'ladle', 'cutlery'].some(keyword => label.includes(keyword))) {
-    return 'metal_utensil';
-  }
-  if (['frying pan', 'wok', 'skillet', 'cauldron'].some(keyword => label.includes(keyword)) || (label.includes('pot') && !label.includes('flower'))) {
-    return 'cookware';
-  }
-  if (['glass', 'jar', 'wine', 'beaker', 'goblet', 'pitcher'].some(keyword => label.includes(keyword))) {
-    return 'glass';
-  }
-  if (['foam', 'styrofoam'].some(keyword => label.includes(keyword)) || (label.includes('cup') && label.includes('disposable'))) {
-    return 'styrofoam';
-  }
-  if (['tupperware', 'container', 'storage', 'tub'].some(keyword => label.includes(keyword))) {
-    return 'container';
-  }
-  if (['packet', 'wrapper'].some(keyword => label.includes(keyword)) || (label.includes('bag') && (label.includes('chip') || label.includes('snack') || label.includes('candy')))) {
-    return 'snack';
-  }
-  if ((label.includes('cup') && !label.includes('measuring')) || ['yogurt', 'pudding', 'plastic cup'].some(keyword => label.includes(keyword))) {
-    return 'plastic_cup';
-  }
-  if (['wood', 'stick', 'lumber', 'timber', 'board', 'log', 'pole'].some(keyword => label.includes(keyword))) {
-    return 'wood';
-  }
-  if (['carton', 'milk', 'juice'].some(keyword => label.includes(keyword))) {
-    return 'carton';
-  }
-  if (['paper', 'box', 'cardboard', 'tissue', 'envelope', 'book', 'notebook', 'toilet'].some(keyword => label.includes(keyword))) {
-    return 'paper';
-  }
-  if (['shirt', 'jean', 'sock', 'jersey', 'shoe', 'cloth', 'towel', 'pillow', 'purse', 'wallet', 'backpack'].some(keyword => label.includes(keyword))) {
-    return 'textile';
-  }
-  if (['bucket', 'basin', 'crate', 'toy', 'lego', 'pen', 'lighter', 'toothbrush', 'comb'].some(keyword => label.includes(keyword))) {
-    return 'hard_plastic';
-  }
-  return null;
-}
-
 export default function UpcycleAIPage() {
-  const [model, setModel] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [result, setResult] = useState<WasteData | null>(null);
+  const [detected, setDetected] = useState<string | null>(null);
   const [alerts, setAlerts] = useState({ decompose: false, hazard: false });
-  const [modelLoaded, setModelLoaded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const loadScripts = async () => {
-      try {
-        if (!window.tf) {
-          const tfScript = document.createElement('script');
-          tfScript.src = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js';
-          tfScript.async = true;
-          document.body.appendChild(tfScript);
-          await new Promise((resolve) => tfScript.onload = resolve);
-        }
-
-        if (!window.mobilenet) {
-          const mobileNetScript = document.createElement('script');
-          mobileNetScript.src = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@latest/dist/mobilenet.min.js';
-          mobileNetScript.async = true;
-          document.body.appendChild(mobileNetScript);
-          await new Promise((resolve) => mobileNetScript.onload = resolve);
-        }
-
-        if (window.mobilenet) {
-          const loadedModel = await window.mobilenet.load();
-          setModel(loadedModel);
-          setModelLoaded(true);
-          console.log("Model loaded successfully");
-        }
-      } catch (error) {
-        console.error("Error loading scripts:", error);
-      }
-    };
-
-    loadScripts();
-  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -382,77 +272,46 @@ export default function UpcycleAIPage() {
 
   const processFile = (file: File) => {
     if (isProcessing) return;
-    if (!model) {
-      alert("AI Model is still loading. Please wait a moment.");
-      return;
-    }
-
     const reader = new FileReader();
     reader.onload = (e) => {
       if (e.target?.result) {
-        setPreview(e.target.result as string);
+        const dataUrl = e.target.result as string;
+        setPreview(dataUrl);
         setResult(null);
+        setDetected(null);
         setAlerts({ decompose: false, hazard: false });
-        setTimeout(() => runAnalysis(), 100);
+        runAnalysis(dataUrl);
       }
     };
     reader.readAsDataURL(file);
   };
 
-  const runAnalysis = async () => {
+  const runAnalysis = async (dataUrl: string) => {
     setIsProcessing(true);
-    const imgElement = document.getElementById('image-preview') as HTMLImageElement;
-    
-    if (imgElement && model) {
-      try {
-        const predictions: Prediction[] = await model.classify(imgElement);
-        displayResults(predictions);
-      } catch (error) {
-        console.error("Inference failed:", error);
-        alert("Something went wrong with the AI analysis.");
-      } finally {
-        setIsProcessing(false);
+    try {
+      // Gemini vision returns one of our exact wasteDatabase keys — far more
+      // accurate than the old MobileNet (generic ImageNet) classifier.
+      const classification = await classifyWaste(dataUrl);
+
+      if (!classification) {
+        alert('AI analysis failed. Check that GOOGLE_API_KEY is set in .env.local, then try again.');
+        setResult(wasteDatabase['manual_check']);
+        return;
       }
+
+      const finalData = wasteDatabase[classification.key] ?? wasteDatabase['manual_check'];
+      setDetected(classification.label);
+      setResult(finalData);
+
+      const hazard = finalData.category === 'Hazardous' || classification.key === 'device_component' || classification.key === 'electronic';
+      const decompose = finalData.category === 'Biodegradable';
+      setAlerts({ decompose, hazard });
+    } catch (error) {
+      console.error('Inference failed:', error);
+      alert('Something went wrong with the AI analysis.');
+    } finally {
+      setIsProcessing(false);
     }
-  };
-
-  const displayResults = (predictions: Prediction[]) => {
-    const detectedKeys = new Set<string>();
-    const top3 = predictions.slice(0, 3);
-    
-    console.log("Top 3 predictions:", top3);
-
-    top3.forEach(p => {
-      const key = getWasteKey(p.className.toLowerCase());
-      if (key) detectedKeys.add(key);
-    });
-
-    const hasWood = detectedKeys.has('wood');
-    const hasWire = detectedKeys.has('device_component') || detectedKeys.has('electronic');
-    const hasMetal = detectedKeys.has('can') || detectedKeys.has('tin_can') || detectedKeys.has('metal_utensil');
-    
-    let finalData: WasteData;
-
-    if (hasWood && (hasWire || hasMetal)) {
-      finalData = wasteDatabase['mixed_composite'];
-    } else if (detectedKeys.size > 0) {
-      const primaryKey = Array.from(detectedKeys)[0];
-      finalData = wasteDatabase[primaryKey];
-    } else {
-      finalData = wasteDatabase['manual_check'];
-    }
-
-    let showHazard = false;
-    let showDecompose = false;
-
-    if (finalData.category === 'Hazardous' || hasWire) {
-      showHazard = true;
-    } else if (finalData.category === 'Biodegradable') {
-      showDecompose = true;
-    }
-
-    setResult(finalData);
-    setAlerts({ decompose: showDecompose, hazard: showHazard });
   };
 
   return (
@@ -462,10 +321,10 @@ export default function UpcycleAIPage() {
             <div className="flex justify-center mb-8">
                 <div className={`
                     inline-flex items-center gap-2 px-4 py-1.5 rounded-full border text-xs font-bold uppercase tracking-wider shadow-lg backdrop-blur-md transition-colors
-                    ${modelLoaded ? 'bg-green-500/20 border-green-500/50 text-green-300' : 'bg-yellow-500/20 border-yellow-500/50 text-yellow-200'}
+                    ${isProcessing ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-200' : 'bg-green-500/20 border-green-500/50 text-green-300'}
                 `}>
-                    {modelLoaded ? <CheckCircle2 size={14} /> : <Loader2 size={14} className="animate-spin" />}
-                    {modelLoaded ? 'AI Model Ready' : 'Loading Model...'}
+                    {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                    {isProcessing ? 'Analyzing…' : 'AI Model Ready'}
                 </div>
             </div>
             <div className="flex flex-col gap-8">
@@ -474,7 +333,7 @@ export default function UpcycleAIPage() {
                         onClick={() => fileInputRef.current?.click()}
                         onDragOver={(e) => { e.preventDefault(); }}
                         onDrop={handleDrop}
-                        className="glass-card rounded-4xl p-2 relative overflow-hidden group cursor-pointer border-2 border-dashed border-white/20 hover:border-green-400/50 transition-all min-h-87.5 flex flex-col items-center justify-center"
+                        className="glass-card rounded-4xl p-2 relative overflow-hidden group cursor-pointer border-2 border-dashed border-white/20 hover:border-green-400/50 transition-all min-h-[350px] flex flex-col items-center justify-center"
                     >
                         <input 
                             type="file" 
@@ -493,12 +352,13 @@ export default function UpcycleAIPage() {
                             </div>
                         )}
                         {preview && (
-                            <Image 
-                                id="image-preview" 
-                                src={preview} 
-                                fill 
-                                className="max-w-full max-h-100 object-contain rounded-2xl z-10" 
-                                alt="Preview" 
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                                id="image-preview"
+                                src={preview}
+                                className="w-full max-h-[400px] object-contain rounded-2xl z-10"
+                                alt="Preview"
+                                crossOrigin="anonymous"
                             />
                         )}
                         {isProcessing && (
@@ -546,6 +406,9 @@ export default function UpcycleAIPage() {
                         <div className="glass-card p-5 rounded-3xl border-l-4 border-l-blue-400">
                             <span className="text-[10px] font-bold uppercase tracking-widest text-blue-300 block mb-1">Material</span>
                             <span className="text-lg font-bold text-white">{result ? result.material : '...'}</span>
+                            {detected && (
+                                <span className="block text-xs text-gray-400 mt-1">Detected: {detected}</span>
+                            )}
                         </div>
                         <div className="glass-card p-5 rounded-3xl border-l-4 border-l-green-400">
                             <span className="text-[10px] font-bold uppercase tracking-widest text-green-300 block mb-1">Category</span>

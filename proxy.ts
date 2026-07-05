@@ -6,11 +6,15 @@ import { NextRequest, NextResponse } from 'next/server';
  * validation happens in the server components via getCurrentUser().
  */
 
-const PUBLIC_PATHS = new Set(['/', '/sign-in', '/sign-up']);
+const PUBLIC_PATHS = new Set(['/', '/sign-in', '/sign-up', '/clear-session']);
 
 export function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
     const hasSession = request.cookies.has('session-id');
+
+    // /clear-session must always be reachable so a stale cookie can be
+    // cleared — never redirect away from it.
+    if (pathname === '/clear-session') return NextResponse.next();
 
     // Signed-in users don't need the auth pages.
     if (hasSession && (pathname === '/sign-in' || pathname === '/sign-up'))

@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: 'My Trees' };
  */
 export default async function MyTreesPage() {
     const user = await getCurrentUserDTO();
-    if (!user) redirect('/sign-in');
+    if (!user) redirect('/clear-session');
 
     const trees = await getTreesByOwner(user.email);
 

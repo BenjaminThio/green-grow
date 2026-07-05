@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: 'Home' };
  */
 export default async function HomePage() {
     const user = await getCurrentUserDTO();
-    if (!user) redirect('/sign-in');
+    if (!user) redirect('/clear-session');
 
     return (
         <GreenGrowDashboard

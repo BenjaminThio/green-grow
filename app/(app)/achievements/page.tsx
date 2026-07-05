@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: 'Achievements' };
  */
 export default async function AchievementsPage() {
     const user = await getCurrentUser();
-    if (!user) redirect('/sign-in');
+    if (!user) redirect('/clear-session');
 
     const views = toAchievementViews(user);
     const xp = totalXp(user);

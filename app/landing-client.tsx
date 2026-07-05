@@ -36,7 +36,7 @@ const AccordionSection: React.FC = () => {
   ];
 
   return (
-    <div className="w-full h-150 flex flex-col md:flex-row gap-4 max-w-7xl mx-auto px-6 mb-24">
+    <div className="w-full h-[600px] flex flex-col md:flex-row gap-4 max-w-7xl mx-auto px-6 mb-24">
       {items.map((item, i) => (
         <div 
           key={i} 
@@ -93,20 +93,10 @@ const App: React.FC = () => {
         <ThreeParticles mouseRef={mouseRef} />
       </div>
 
-      {/*
-       * The 3D tree is a FIXED background layer occupying the right half of
-       * the viewport (full height), so it's large, never clipped by a small
-       * canvas box, and stays put on resize. It sits above the photo/blobs
-       * but below the hero content (which is z-10).
-       */}
-      <div className="landing-tree" aria-hidden="true">
-        <TreeParticles />
-      </div>
-
       <nav className={`fixed w-full z-50 top-0 transition-all duration-300 ${scrolled ? 'glass shadow-lg py-2' : 'py-6'}`}>
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
           <div className="flex items-center gap-2 cursor-pointer group">
-            <div className="w-10 h-10 bg-linear-to-br from-green-400 to-green-600 rounded-xl flex items-center justify-center transform group-hover:rotate-12 transition-transform duration-300 shadow-lg shadow-green-900/50">
+            <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-green-600 rounded-xl flex items-center justify-center transform group-hover:rotate-12 transition-transform duration-300 shadow-lg shadow-green-900/50">
               <span className="text-white"><Icons.Sprout /></span>
             </div>
             <span className="text-2xl font-display font-bold tracking-tight">Green<span className="text-green-400">Grow</span></span>
@@ -117,7 +107,7 @@ const App: React.FC = () => {
       <main className="relative pt-32 pb-16 z-10">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 min-h-[85vh] flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-20">
           
-          <div className="flex-1 text-center lg:text-left">
+          <div className="flex-1 text-center lg:text-left relative z-10">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border border-green-500/30 text-green-300 text-xs font-bold tracking-wider uppercase mb-8">
               <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
               #1 Gardening Companion
@@ -165,20 +155,28 @@ const App: React.FC = () => {
             <div className="mt-12 flex items-center justify-center lg:justify-start gap-6 text-sm text-gray-400">
               <div className="flex -space-x-3">
                 {[1,2,3].map(i => (
-                  <div key={i} className="w-10 h-10 rounded-full border-2 border-forest-900 bg-gray-600 overflow-hidden">
+                  <div key={i} className="w-10 h-10 rounded-full border-2 border-[#052e16] bg-gray-600 overflow-hidden">
                     <Image src={`https://i.pravatar.cc/150?img=${i + 10}`} alt="User" width={0} height={0} className="w-full h-full object-cover" />
                   </div>
                 ))}
-                <div className="w-10 h-10 rounded-full border-2 border-forest-900 bg-green-500 text-white flex items-center justify-center font-bold text-xs">+2M</div>
+                <div className="w-10 h-10 rounded-full border-2 border-[#052e16] bg-green-500 text-white flex items-center justify-center font-bold text-xs">+2M</div>
               </div>
               <p>Happy Gardeners</p>
             </div>
           </div>
 
-          <div className="flex-1 relative w-full max-w-md lg:max-w-full min-h-75 lg:min-h-130 hidden lg:block">
-            {/* The 3D tree lives in the fixed .landing-tree layer; this column
-                reserves space for it and holds the floating status card. */}
-            <div className="absolute top-20 left-0 glass-card p-4 rounded-2xl animate-float-delayed hidden sm:block z-10">
+          <div className="flex-1 relative w-full max-w-md lg:max-w-full min-h-[300px] lg:min-h-[560px]">
+            {/*
+             * The 3D tree. On desktop this wrapper is a normal in-flow box
+             * on the right (so it scrolls away with the hero) sitting next to
+             * the floating status card. On mobile, CSS promotes it to a
+             * fixed, screen-centered backdrop behind the content.
+             */}
+            <div className="landing-tree-box">
+              <TreeParticles />
+            </div>
+
+            <div className="absolute top-16 left-0 lg:-left-8 glass-card p-4 rounded-2xl animate-float-delayed hidden sm:block z-20">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
                   <div className="text-green-600"><Icons.Check /></div>

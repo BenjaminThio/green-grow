@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: 'Admin Hub' };
  */
 export default async function AdminPage() {
     const user = await getCurrentUser();
-    if (!user) redirect('/sign-in');
+    if (!user) redirect('/clear-session');
     if (user.info.role !== 'Admin') redirect('/home');
 
     const [events, reports] = await Promise.all([getAllEvents(), getReports()]);

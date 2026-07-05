@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: 'Profile' };
  */
 export default async function ProfilePage() {
     const user = await getCurrentUserDTO();
-    if (!user) redirect('/sign-in');
+    if (!user) redirect('/clear-session');
 
     return (
         <div className="relative z-10 min-h-screen px-4 py-8 flex items-start justify-center">
