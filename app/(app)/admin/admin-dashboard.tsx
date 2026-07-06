@@ -1,15 +1,17 @@
 'use client';
 
-import { useActionState, useEffect, useMemo, useState, useTransition } from 'react';
+import { useActionState, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import Image from 'next/image';
 import {
     CalendarDays, MapPin, Users, Plus, X, Loader2, AlertCircle, CheckCircle2,
-    FileWarning, LocateFixed, Clock, Wrench, Ban, Flag
+    FileWarning, LocateFixed, Clock, Wrench, Ban, Flag, ImagePlus, Download
 } from 'lucide-react';
 import { createEvent, setEventStatus } from '@/lib/event-actions';
 import { updateReportStatus } from '@/lib/report-actions';
 import type { ActionResult } from '@/lib/event-actions';
 import { distanceKm, formatDistance } from '@/lib/geo';
+import { compressImage } from '@/lib/image';
+import { toCSV, downloadCSV } from '@/lib/csv';
 import LocationPicker from '@/components/ui/location-picker';
 import type { EventDoc, ReportDoc, ReportStatus } from '@/lib/types';
 
@@ -24,10 +26,47 @@ export default function AdminDashboard({ events, reports }: AdminDashboardProps)
     const [tab, setTab] = useState<'activities' | 'reports'>('activities');
     const pendingCount = reports.filter(r => r.status !== 'resolved').length;
 
+    // Exports whichever dataset matches the current tab.
+    const handleExport = () => {
+        const stamp = new Date().toISOString().slice(0, 10);
+        if (tab === 'activities') {
+            const headers = ['Title', 'Category', 'Date', 'Time', 'Location', 'Latitude', 'Longitude', 'Organizer', 'Tools', 'Participants', 'Status', 'Created By', 'Created At'];
+            const rows = events.map(e => [
+                e.title, e.category, e.date, e.time, e.location.address, e.location.lat, e.location.lng,
+                e.organizer, e.tools.join('; '), e.participants.length, e.status, e.createdBy,
+                new Date(e.createdAt).toISOString()
+            ]);
+            downloadCSV(`greengrow-events-${stamp}.csv`, toCSV(headers, rows));
+        } else {
+            const headers = ['Title', 'Category', 'Severity', 'Status', 'Description', 'Location', 'Latitude', 'Longitude', 'Reporter', 'Reporter Email', 'Photos', 'Created At'];
+            const rows = reports.map(r => [
+                r.title, r.category, r.severity, r.status, r.description, r.location.address,
+                r.location.lat, r.location.lng, r.reporterName, r.reporterEmail,
+                r.imageBase64s.length, new Date(r.createdAt).toISOString()
+            ]);
+            downloadCSV(`greengrow-reports-${stamp}.csv`, toCSV(headers, rows));
+        }
+    };
+
+    const exportCount = tab === 'activities' ? events.length : reports.length;
+
     return (
         <div className="min-h-screen text-white antialiased font-sans overflow-x-hidden relative">
             <div className="relative z-10 flex flex-col min-h-screen pb-24">
                 <main className="flex-1 px-4 py-6 max-w-2xl mx-auto w-full space-y-6">
+                    <div className="flex items-center justify-between gap-3">
+                        <h1 className="text-xl font-display font-bold">Admin Dashboard</h1>
+                        <button
+                            onClick={handleExport}
+                            disabled={exportCount === 0}
+                            className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold bg-white/5 border border-white/10 text-green-200 hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                            title={`Export ${tab === 'activities' ? 'events' : 'reports'} as CSV`}
+                        >
+                            <Download size={14} />
+                            Export {tab === 'activities' ? 'Events' : 'Reports'} ({exportCount})
+                        </button>
+                    </div>
+
                     <div className="glass-panel border-x-0 sm:border-x sm:rounded-2xl p-1.5 flex gap-1.5">
                         <TabButton active={tab === 'activities'} onClick={() => setTab('activities')} icon={CalendarDays} label="Activities" />
                         <TabButton active={tab === 'reports'} onClick={() => setTab('reports')} icon={FileWarning} label="Reports" badge={pendingCount} />
@@ -140,6 +179,9 @@ function ActivitiesTab({ events }: { events: EventDoc[] }) {
 
 function CreateEventForm({ onClose }: { onClose: () => void }) {
     const [state, formAction, pending] = useActionState(createEvent, initialState);
+    const [coverImage, setCoverImage] = useState<string | null>(null);
+    const [compressing, setCompressing] = useState(false);
+    const fileRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (state.success) onClose();
@@ -165,11 +207,11 @@ function CreateEventForm({ onClose }: { onClose: () => void }) {
             <div className="grid grid-cols-2 gap-3">
                 <label className="block">
                     <span className="text-[10px] text-gray-400 uppercase tracking-wider ml-1">Date</span>
-                    <input name="date" type="date" required className="glass-input w-full px-4 py-3 rounded-xl mt-1 scheme-dark" />
+                    <input name="date" type="date" required className="glass-input w-full px-4 py-3 rounded-xl mt-1 [color-scheme:dark]" />
                 </label>
                 <label className="block">
                     <span className="text-[10px] text-gray-400 uppercase tracking-wider ml-1">Time</span>
-                    <input name="time" type="time" required className="glass-input w-full px-4 py-3 rounded-xl mt-1 scheme-dark" />
+                    <input name="time" type="time" required className="glass-input w-full px-4 py-3 rounded-xl mt-1 [color-scheme:dark]" />
                 </label>
             </div>
 
@@ -179,7 +221,50 @@ function CreateEventForm({ onClose }: { onClose: () => void }) {
                 <Wrench size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
                 <input name="tools" placeholder="Recommended tools, comma-separated" className="glass-input w-full pl-10 pr-4 py-3.5 rounded-xl placeholder-gray-500" />
             </div>
-            <input name="imageUrl" type="url" placeholder="Cover image URL (optional)" className="glass-input w-full px-4 py-3.5 rounded-xl placeholder-gray-500" />
+            {/* Cover image: upload a file (consistent with report/tree uploads)
+                instead of pasting a URL. Stored as a compressed data-URL in the
+                same imageUrl field the events page already renders. */}
+            {coverImage && <input type="hidden" name="imageUrl" value={coverImage} />}
+            <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async e => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setCompressing(true);
+                    try {
+                        setCoverImage(await compressImage(file, 1280, 0.7));
+                    } finally {
+                        setCompressing(false);
+                    }
+                    e.target.value = '';
+                }}
+            />
+            {coverImage ? (
+                <div className="relative rounded-xl overflow-hidden border border-white/10 h-32">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={coverImage} alt="Event cover preview" className="w-full h-full object-cover" />
+                    <button
+                        type="button"
+                        onClick={() => setCoverImage(null)}
+                        aria-label="Remove cover image"
+                        className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-red-500/80 text-white rounded-full transition-colors"
+                    >
+                        <X size={14} />
+                    </button>
+                </div>
+            ) : (
+                <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-white/5 border border-dashed border-white/20 hover:border-green-400/50 text-gray-300 text-sm transition-all"
+                >
+                    {compressing ? <Loader2 size={16} className="animate-spin" /> : <ImagePlus size={16} />}
+                    {compressing ? 'Processing…' : 'Upload cover image (optional)'}
+                </button>
+            )}
 
             {state.error && (
                 <div role="alert" className="flex items-center gap-2 text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
@@ -280,7 +365,7 @@ function ReportsTab({ reports }: { reports: ReportDoc[] }) {
                 <div key={report.id} className="glass-card rounded-3xl overflow-hidden">
                     {report.imageBase64s.length > 0 && (
                         <div className="relative h-36 w-full">
-                            <Image src={report.imageBase64s[0]} alt={report.title} fill unoptimized className="object-cover" />
+                            <Image src={report.imageBase64s[0]} alt={report.title} fill sizes="(max-width: 768px) 100vw, 640px" unoptimized className="object-cover" />
                             <div className="absolute inset-0 bg-linear-to-t from-forest-900 to-transparent" />
                         </div>
                     )}

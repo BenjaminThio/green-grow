@@ -12,7 +12,6 @@ import AmbientBackground from '@/components/ui/ambient-background';
 import './landing.css';
 import Image from 'next/image';
 
-
 const Icons = {
   Sprout: (props: React.SVGProps<SVGSVGElement>) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1.7-1.3 2.9-3.3 3-6-2.3.5-4.5 2-6.2 3.4z"/></svg>,
   ArrowRight: (props: React.SVGProps<SVGSVGElement>) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>,
@@ -21,18 +20,12 @@ const Icons = {
   Check: (props: React.SVGProps<SVGSVGElement>) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M20 6 9 17l-5-5"/></svg>
 };
 
-
-
-
-
-
-
 const AccordionSection: React.FC = () => {
   const [activeIndex, setActiveIndex] = useState(0);
   const items = [
-    { title: 'Carbon Sink', desc: 'Forests are the most efficient carbon capture technology on Earth.', img: 'https://cdn.wallpapersafari.com/50/71/DI579Z.jpg' },
-    { title: 'Water Security', desc: 'Roots act as filtration systems, providing clean groundwater for millions.', img: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?q=80&w=1948' },
-    { title: 'Biodiversity', desc: 'Protecting habitats for thousands of endangered species.', img: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80&w=2026' }
+    { title: 'Carbon Sink', desc: 'Forests are the most efficient carbon capture technology on Earth.', img: '/images/carbon-sink.jpg' },
+    { title: 'Water Security', desc: 'Roots act as filtration systems, providing clean groundwater for millions.', img: '/images/water-security.jpg' },
+    { title: 'Biodiversity', desc: 'Protecting habitats for thousands of endangered species.', img: '/images/biodiversity.jpg' }
   ];
 
   return (
@@ -43,7 +36,7 @@ const AccordionSection: React.FC = () => {
           onMouseEnter={() => setActiveIndex(i)}
           className={`relative rounded-3xl overflow-hidden cursor-pointer transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${activeIndex === i ? 'flex-3' : 'flex-1'} group`}
         >
-          <Image src={item.img} alt={item.title} fill className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+          <Image src={item.img} alt={item.title} fill sizes="(max-width: 768px) 100vw, 33vw" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
           <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/20 to-transparent"></div>
           
           <div className="absolute bottom-0 left-0 p-8 w-full">

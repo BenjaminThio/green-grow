@@ -278,3 +278,76 @@ h1, h2, h3, .font-display {
     transform: translateY(2px);
     box-shadow: inset 0 4px 6px rgba(0, 0, 0, 0.6);
 }
+
+/* Vertical marquee for the beeper LCD — long quotes scroll up and loop.
+   The animation is applied inline with a JS-computed duration/distance so
+   it only runs when the text actually overflows. */
+@keyframes beeper-scroll-up {
+    0%   { transform: translateY(var(--scroll-start, 0)); }
+    100% { transform: translateY(var(--scroll-end, -100%)); }
+}
+
+/* ------------------------------------------------------------
+   Beeper quote transition: a burst of CRT static + glitch when
+   switching quotes. Toggled by a `.beeper-glitching` class that
+   home-client.tsx adds for ~450ms on each quote change.
+   ------------------------------------------------------------ */
+
+/* TV static: a tiny repeating noise tile scrolled fast. */
+.beeper-static {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    pointer-events: none;
+    opacity: 0;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 160px 160px;
+}
+
+.beeper-glitching .beeper-static {
+    animation: beeper-static-flash 0.45s steps(6) 1;
+}
+
+@keyframes beeper-static-flash {
+    0%   { opacity: 0.85; background-position: 0 0; }
+    20%  { opacity: 0.55; background-position: -40px 20px; }
+    40%  { opacity: 0.75; background-position: 30px -25px; }
+    60%  { opacity: 0.4;  background-position: -20px 40px; }
+    80%  { opacity: 0.5;  background-position: 25px 15px; }
+    100% { opacity: 0;    background-position: 0 0; }
+}
+
+/* Text glitch: horizontal jitter + brightness flicker + faint RGB split. */
+.beeper-glitching .beeper-glitch-target {
+    animation: beeper-text-glitch 0.45s steps(3) 1;
+}
+
+@keyframes beeper-text-glitch {
+    0%   { transform: translateX(0);    filter: brightness(2); opacity: 0.2; text-shadow: -2px 0 rgba(255,0,80,0.6), 2px 0 rgba(0,180,255,0.6); }
+    25%  { transform: translateX(-4px); filter: brightness(0.6); opacity: 0.9; text-shadow: 2px 0 rgba(255,0,80,0.6), -2px 0 rgba(0,180,255,0.6); }
+    50%  { transform: translateX(3px);  filter: brightness(1.6); opacity: 0.5; text-shadow: -1px 0 rgba(255,0,80,0.5), 1px 0 rgba(0,180,255,0.5); }
+    75%  { transform: translateX(-2px); filter: brightness(0.9); opacity: 1;   text-shadow: none; }
+    100% { transform: translateX(0);    filter: brightness(1);   opacity: 1;   text-shadow: none; }
+}
+
+/* A quick horizontal "roll bar" sweeping down, like signal re-sync. */
+.beeper-glitching .beeper-rollbar {
+    animation: beeper-rollbar 0.45s linear 1;
+}
+
+.beeper-rollbar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 14px;
+    z-index: 31;
+    pointer-events: none;
+    opacity: 0;
+    background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.5), transparent);
+}
+
+@keyframes beeper-rollbar {
+    0%   { opacity: 0.7; top: -14px; }
+    100% { opacity: 0;   top: 100%; }
+}

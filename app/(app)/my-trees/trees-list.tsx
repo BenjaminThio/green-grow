@@ -65,7 +65,7 @@ export default function TreesList({ trees }: { trees: TreeDoc[] }) {
                     <div key={tree.id} className="glass-card rounded-4xl overflow-hidden">
                         <div className="relative h-48 w-full">
                             {tree.photoBase64 ? (
-                                <Image src={tree.photoBase64} alt={tree.name} fill unoptimized className="object-cover" />
+                                <Image src={tree.photoBase64} alt={tree.name} fill sizes="(max-width: 768px) 100vw, 512px" unoptimized className="object-cover" />
                             ) : (
                                 <div className="absolute inset-0 bg-linear-to-br from-green-800 via-emerald-900 to-forest-950 flex items-center justify-center text-6xl">
                                     🌳
@@ -93,7 +93,7 @@ export default function TreesList({ trees }: { trees: TreeDoc[] }) {
                             </div>
 
                             <div className="space-y-6 relative pl-2">
-                                <div className="absolute top-2 bottom-2 left-4.75 w-0.5 bg-white/10" />
+                                <div className="absolute top-2 bottom-2 left-[19px] w-0.5 bg-white/10" />
                                 {updates.slice(0, 5).map((update, index) => (
                                     <div key={`${update.at}-${index}`} className="flex gap-4 relative">
                                         <div className="shrink-0 w-3 h-3 mt-1.5 rounded-full bg-green-500 border-2 border-forest-900 z-10 relative left-2 shadow-[0_0_10px_rgba(34,197,94,0.5)]" />

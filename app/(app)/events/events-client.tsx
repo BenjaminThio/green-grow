@@ -87,6 +87,7 @@ export default function EventsClient({ events, userEmail }: EventsClientProps) {
                                             src={event.imageUrl}
                                             alt={event.title}
                                             fill
+                                            sizes="(max-width: 768px) 100vw, 512px"
                                             unoptimized
                                             className="object-cover transform group-hover:scale-105 transition-transform duration-700"
                                         />

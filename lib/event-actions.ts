@@ -58,6 +58,9 @@ export async function createEvent(_prev: ActionResult, formData: FormData): Prom
     if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0))
         return fail('Please set the event coordinates (use "Use my location" or enter them manually).');
     if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return fail('Coordinates are out of range.');
+    // Firestore docs cap at ~1 MB; the cover is compressed client-side, but
+    // guard the base64 size on the server too.
+    if (imageUrl && imageUrl.length > 900_000) return fail('Cover image is too large — please pick a smaller one.');
 
     const event: EventDoc = {
         id: randomUUID(),

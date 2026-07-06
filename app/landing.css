@@ -71,8 +71,8 @@
            Replace the filename if yours differs. */
         background-color: #04140c;
         background-image:
-            linear-gradient(to right, rgba(2, 12, 7, 0.92) 0%, rgba(2, 12, 7, 0.45) 45%, rgba(2, 12, 7, 0.12) 100%),
-            url('/forest-bg.jpg');
+            linear-gradient(to right, rgba(2, 12, 7, 0.92) 0%, rgba(2, 12, 7, 0.45) 45%, rgba(2, 12, 7, 0.12) 100%);
+            /* url('/images/landing-bg.jpg'); */
         background-size: cover, cover;
         background-position: center, center;
         background-repeat: no-repeat, no-repeat;

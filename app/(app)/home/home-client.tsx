@@ -1,10 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { Vector3 } from 'three';
-import dynamic from 'next/dynamic';
 
-// three.js is heavy — load the particle field client-side only, after hydration.
-const ThreeParticles = dynamic(() => import('@/components/ui/three-particles'), { ssr: false });
 import { 
     CalendarDays, 
     Map as MapIcon, 
@@ -31,11 +27,104 @@ const QUOTES = [
     { id: 5, text: "WATER IS LIFE. SAVE EVERY DROP.", author: "Alert #404" },
 ];
 
+/*
+ * Quote line for the beeper LCD. If the text fits, it's centered.
+ * If it's too tall for the screen, the text is duplicated and the block
+ * scrolls upward in a seamless loop (translateY 0 -> -50% of the doubled
+ * content = exactly one copy), so as one copy leaves the top the next
+ * appears from the bottom with no jump.
+ */
+const BeeperQuote = ({ text }: { text: string }) => {
+    const viewportRef = useRef<HTMLDivElement>(null);
+    const firstLineRef = useRef<HTMLParagraphElement>(null);
+    const [overflowing, setOverflowing] = useState(false);
+    const [duration, setDuration] = useState(10);
+    // Exact pixel distance to translate for a seamless wrap: one copy + gap.
+    const [travel, setTravel] = useState(0);
+
+    const GAP_PX = 16; // matches mt-4 between the two copies
+
+    useEffect(() => {
+        const viewport = viewportRef.current;
+        const measure = () => {
+            const line = firstLineRef.current;
+            if (!viewport || !line) return;
+            const singleHeight = line.getBoundingClientRect().height;
+            const viewportHeight = viewport.clientHeight;
+            const isOverflow = singleHeight > viewportHeight + 1;
+            setOverflowing(isOverflow);
+            const distance = singleHeight + GAP_PX;
+            setTravel(distance);
+            setDuration(Math.max(8, distance / 20)); // ~20px/sec
+        };
+
+        // Measure now, next frame, and after fonts/layout settle.
+        measure();
+        const raf = requestAnimationFrame(measure);
+        const t1 = setTimeout(measure, 60);
+        const t2 = setTimeout(measure, 400);
+
+        // React to size changes (font swap, window resize, container reflow).
+        const ro = new ResizeObserver(measure);
+        if (viewport) ro.observe(viewport);
+        window.addEventListener('resize', measure);
+
+        return () => {
+            cancelAnimationFrame(raf);
+            clearTimeout(t1);
+            clearTimeout(t2);
+            ro.disconnect();
+            window.removeEventListener('resize', measure);
+        };
+    }, [text]);
+
+    return (
+        <div
+            ref={viewportRef}
+            className={`w-full flex-1 min-h-0 overflow-hidden flex flex-col ${overflowing ? 'justify-start' : 'justify-center'}`}
+        >
+            <div
+                className="w-full shrink-0"
+                style={
+                    overflowing
+                        ? {
+                              ['--scroll-start' as string]: '0px',
+                              ['--scroll-end' as string]: `-${travel}px`,
+                              animation: `beeper-scroll-up ${duration}s linear infinite`
+                          }
+                        : undefined
+                }
+            >
+                <p ref={firstLineRef} className="text-base sm:text-lg font-bold leading-tight uppercase tracking-tight text-center">{text}</p>
+                {/* Second copy provides the seamless wrap while scrolling. */}
+                {overflowing && (
+                    <p className="text-base sm:text-lg font-bold leading-tight uppercase tracking-tight text-center mt-4" aria-hidden="true">{text}</p>
+                )}
+            </div>
+        </div>
+    );
+};
+
 const EmbeddedBeeper = () => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isOn, setIsOn] = useState(true);
     const [isSaved, setIsSaved] = useState(false);
     const [bootSequence, setBootSequence] = useState(false);
+    // Brief CRT-static/glitch burst whenever the displayed quote changes.
+    const [glitching, setGlitching] = useState(false);
+    const isFirstRender = useRef(true);
+
+    useEffect(() => {
+        // Don't glitch on the very first mount, only on real changes.
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            return;
+        }
+        if (!isOn) return;
+        setGlitching(true);
+        const t = setTimeout(() => setGlitching(false), 450);
+        return () => clearTimeout(t);
+    }, [currentIndex, isOn]);
 
     useEffect(() => {
         if (!isOn) return;
@@ -57,13 +146,16 @@ const EmbeddedBeeper = () => {
 
     return (
         <div className="w-full flex items-center justify-center py-4">
-            <div className="relative w-full max-w-105 aspect-[1.7/1] rounded-[30px] beeper-case p-4 sm:p-5 flex flex-col items-center justify-between border-b-8 border-[#0f0f0f]">
+            <div className="relative w-full max-w-[420px] aspect-[1.7/1] rounded-[30px] beeper-case p-4 sm:p-5 flex flex-col items-center justify-between border-b-8 border-[#0f0f0f]">
                 <div className="absolute top-2 w-full flex justify-center opacity-30 pointer-events-none">
                     <span className="text-[8px] tracking-[0.2em] font-bold text-white">GREEN GROW PAGER</span>
                 </div>
                 <div className="w-full h-[60%] bg-[#8c8c8c] rounded-t-xl rounded-b-3xl p-3 relative shadow-[inset_0_3px_8px_rgba(0,0,0,0.4)] flex items-center justify-center mb-1">
-                    <div className={`w-full h-full rounded-md border-4 border-[#7a7a7a] relative overflow-hidden transition-all duration-300 ${isOn ? 'bg-[#98c538] shadow-[0_0_15px_rgba(152,197,56,0.3)]' : 'bg-[#4a5733] opacity-60'}`}>
+                    <div className={`w-full h-full rounded-md border-4 border-[#7a7a7a] relative overflow-hidden transition-all duration-300 ${isOn ? 'bg-[#98c538] shadow-[0_0_15px_rgba(152,197,56,0.3)]' : 'bg-[#4a5733] opacity-60'} ${glitching ? 'beeper-glitching' : ''}`}>
                         <div className="lcd-screen absolute inset-0 pointer-events-none z-10 opacity-30"></div>
+                        {/* CRT-static + roll-bar overlays that flash on quote change */}
+                        <div className="beeper-static" aria-hidden="true"></div>
+                        <div className="beeper-rollbar" aria-hidden="true"></div>
                         <div className="relative z-20 h-full p-2 flex flex-col justify-between font-digital text-[#1a2e05]">
                             {isOn ? (
                                 bootSequence ? (
@@ -77,8 +169,8 @@ const EmbeddedBeeper = () => {
                                             <div className="flex items-center gap-1"><Wifi size={10} /><span>ZN-A</span></div>
                                             <div className="flex items-center gap-1"><span>{isSaved ? 'SAVED' : 'RDY'}</span><Battery size={10} className="fill-current" /></div>
                                         </div>
-                                        <div className="flex-1 flex flex-col items-center justify-center text-center">
-                                            <p className="text-base sm:text-lg font-bold leading-tight uppercase tracking-tight line-clamp-2">{`"${QUOTES[currentIndex].text}"`}</p>
+                                        <div className="flex-1 flex flex-col items-center justify-center text-center w-full min-h-0 beeper-glitch-target">
+                                            <BeeperQuote text={`"${QUOTES[currentIndex].text}"`} />
                                             <div className="mt-1 text-[10px] font-bold border-t border-[#1a2e05] pt-0.5 w-1/2 opacity-80">{QUOTES[currentIndex].author}</div>
                                         </div>
                                     </>
@@ -129,13 +221,6 @@ export default function GreenGrowDashboard({ username, isAdmin, stats }: Dashboa
     const user = { name: username, role: isAdmin ? 'admin' : 'user' } as const;
     const router = useRouter();
 
-    const mouseRef = useRef<Vector3>(new Vector3(9999, 9999, 0));
-    const handleMouseMove = (e: React.MouseEvent) => {
-        const x = (e.clientX / window.innerWidth - 0.5) * 60; 
-        const y = -(e.clientY / window.innerHeight - 0.5) * 40;
-        mouseRef.current.set(x, y, 0);
-    };
-
     const navigateTo = (page: string) => {
         // Leading slash is essential: router.push('events') from /home would
         // resolve to /home/events (a 404). Absolute paths route from the root.
@@ -143,9 +228,8 @@ export default function GreenGrowDashboard({ username, isAdmin, stats }: Dashboa
     };
 
     return (
-        <div onMouseMove={handleMouseMove} className="min-h-screen text-white antialiased font-sans overflow-x-hidden relative">
-            <div className="ambient-bg"></div>
-            <ThreeParticles mouseRef={mouseRef} />
+        <div className="min-h-screen text-white antialiased font-sans overflow-x-hidden relative">
+            {/* Background (firefly particles + blobs) is provided once by the (app) layout. */}
             <div className="flex flex-col min-h-screen relative z-10 pb-24">
                 <main className="flex-1 px-6 pt-0 pb-8 max-w-2xl mx-auto w-full">
                     <div className="mb-6 fade-in-up">

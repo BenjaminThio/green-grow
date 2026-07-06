@@ -1,10 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { Vector3 } from 'three';
-import dynamic from 'next/dynamic';
 
-// three.js is heavy — load the particle field client-side only, after hydration.
-const ThreeParticles = dynamic(() => import('@/components/ui/three-particles'), { ssr: false });
 import { 
     Send, 
     Camera, 
@@ -42,17 +38,10 @@ export default function GaiaInterface() {
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
-    const mouseRef = useRef<Vector3>(new Vector3(9999, 9999, 0));
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
-
-    const handleMouseMove = (e: React.MouseEvent) => {
-        const x = (e.clientX / window.innerWidth - 0.5) * 60; 
-        const y = -(e.clientY / window.innerHeight - 0.5) * 40;
-        mouseRef.current.set(x, y, 0);
-    };
 
     const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -97,14 +86,9 @@ export default function GaiaInterface() {
 
     return (
         <div 
-            onMouseMove={handleMouseMove}
-            className='min-h-screen text-white antialiased font-sans relative overflow-hidden bg-forest-950'
+            className='min-h-screen text-white antialiased font-sans relative overflow-hidden'
         >
-            <div className='fixed top-0 left-0 w-full h-full pointer-events-none'>
-                <div className='absolute top-[-10%] left-[-10%] w-125 h-125 bg-green-800/30 rounded-full blur-[100px] animate-pulse' />
-                <div className='absolute bottom-[-10%] right-[-10%] w-150 h-150 bg-emerald-900/40 rounded-full blur-[100px] animate-pulse delay-1000' />
-            </div>
-            <ThreeParticles mouseRef={mouseRef} />
+            {/* Background (firefly particles + blobs) provided once by the (app) layout. */}
             <div className='relative z-10 flex flex-col h-screen max-w-4xl mx-auto p-4 md:p-6'>
                 <header className='flex items-center justify-between mb-4 px-2'>
                     <div className='flex items-center gap-3'>
@@ -117,7 +101,7 @@ export default function GaiaInterface() {
                         </div>
                     </div>
                 </header>
-                <div className='flex-1 glass-panel rounded-3xl overflow-hidden flex flex-col relative mb-17.5'>
+                <div className='flex-1 glass-panel rounded-3xl overflow-hidden flex flex-col relative mb-[70px]'>
                     <div className='flex-1 overflow-y-auto p-4 md:p-6 space-y-6 scrollbar-hide'>
                         {messages.map((msg) => (
                             <div 
@@ -143,7 +127,7 @@ export default function GaiaInterface() {
                                         >
                                             {msg.image && (
                                                 <div className='mb-3 rounded-lg overflow-hidden border border-white/10'>
-                                                    <Image src={msg.image} alt='User upload' fill className='w-full h-auto max-h-64 object-cover' />
+                                                    <Image src={msg.image} alt='User upload' fill sizes="(max-width: 768px) 90vw, 400px" className='w-full h-auto max-h-64 object-cover' />
                                                 </div>
                                             )}
                                             {msg.text}
@@ -175,7 +159,7 @@ export default function GaiaInterface() {
                     <div className='p-4 bg-black/20 backdrop-blur-md border-t border-white/5'>
                         {selectedImage && (
                             <div className='mb-3 relative inline-block'>
-                                <Image src={selectedImage} alt='Preview' fill className='h-20 rounded-lg border border-green-500/30 shadow-lg' />
+                                <Image src={selectedImage} alt='Preview' fill sizes="80px" className='h-20 rounded-lg border border-green-500/30 shadow-lg' />
                                 <button 
                                     onClick={() => setSelectedImage(null)}
                                     className='absolute -top-2 -right-2 bg-red-500/80 hover:bg-red-500 text-white rounded-full p-1 transition-colors'

@@ -147,7 +147,7 @@ export default function ReportForm() {
                     <div className="grid grid-cols-3 gap-3">
                         {images.map((img, i) => (
                             <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-white/10">
-                                <Image src={img} alt={`Evidence ${i + 1}`} fill unoptimized className="object-cover" />
+                                <Image src={img} alt={`Evidence ${i + 1}`} fill sizes="(max-width: 768px) 33vw, 160px" unoptimized className="object-cover" />
                                 <button
                                     type="button"
                                     onClick={() => setImages(prev => prev.filter((_, idx) => idx !== i))}
